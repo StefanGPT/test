@@ -4,15 +4,27 @@ require_once 'rsi.php';
 require_once 'fvg.php';
 
 $symbol = 'BTC-USDT';
-$interval = '4h';
 $limit = 300;
 
-// === 1. Preis und RSI(14) auf 4h holen ===
+// === 1. Preis und RSI(14) auf mehreren Timeframes holen ===
 $price = getFuturesPrice($symbol);
-$candles_4h = getCandles($symbol, $interval, $limit);
 
-$closes = array_map(fn($c) => floatval($c[4]), $candles_4h);
-$rsi = calculateRSI($closes, 14);
+$timeframes = ['15m', '1h', '4h', '1d', '1w'];
+$rsiValues = [];
+foreach ($timeframes as $tf) {
+    $candles = getCandles($symbol, $tf, $limit);
+    // --- DEBUG: Close-Array ausgeben ---
+    echo "<b>$tf - Erste 10 Close-Werte (alt ➔ neu):</b><br>";
+    foreach (array_slice($candles, 0, 10) as $c) {
+        echo floatval($c[4]) . " ";
+    }
+    echo "<br><br>";
+    // ---
+    $closes = array_map(fn($c) => floatval($c[4]), $candles);
+    $rsiValues[$tf] = calculateRSI($closes, 14);
+}
+
+$candles_4h = getCandles($symbol, '4h', $limit);
 
 // === 2. SMC/FVG/Sweep-Analyse ===
 $h4_fvgs = findFVGs(array_slice($candles_4h, -100));
@@ -32,7 +44,10 @@ echo "<br>Aktueller M15-Close (letzte abgeschlossene Kerze): <b>$current_m15</b>
 
 echo "<h2>BTC/USDT – Analyse</h2>";
 echo "Aktueller Preis (4h): <b>$price</b> USD<br>";
-echo "RSI(14) auf 4h: <b>$rsi</b><br><br>";
+foreach ($rsiValues as $tf => $val) {
+    echo "RSI(14) auf $tf: <b>$val</b><br>";
+}
+echo "<br>";
 
 echo "<h3>SMC/FVG/Sweep-Strategie (Kollege Miki Montana)</h3>";
 
